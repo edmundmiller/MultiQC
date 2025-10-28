@@ -11,7 +11,18 @@
       "Bash(jj bookmark:*)",
       "Bash(for skill in creating-multiqc-modules analyzing-log-files creating-multiqc-template)",
       "Bash(do echo \"=== $skill ===\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(mkdir:*)",
+      "Bash(gh pr view 3324 --json title,body,files)",
+      "Bash(gh pr view 3324 --json body --jq '.body')",
+      "Bash(gh pr diff 3324 --name-only)",
+      "Bash(gh pr view 3324 --json files --jq '.files[].path')",
+      "Bash(xargs -I {} sh -c 'echo \"\"\"\"=== {} ===\"\"\"\" && gh pr diff 3324 -- {} | head -n 200')",
+      "Bash(gh api repos/MultiQC/MultiQC/pulls/3324/files --jq '.[].patch')",
+      "Bash(gh api repos/MultiQC/MultiQC/pulls/3324/files --jq '.[3].patch')"
     ],
     "deny": [],
     "ask": []

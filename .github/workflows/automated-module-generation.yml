@@ -121,35 +121,24 @@ jobs:
           prompt: |
             # Automated MultiQC Module Generation
 
-            **High-Priority Module Requests Found**: ${{ fromJSON(steps.find-high-priority.outputs.result).length }}
+            **High-Priority Module Requests**: ${{ fromJSON(steps.find-high-priority.outputs.result).length }}
             **Dry Run Mode**: ${{ inputs.dry_run }}
 
-            ## Your Task
-            Generate MultiQC modules for the following high-priority issues that have complete information and example files:
+            ## Task
+            Generate MultiQC modules for these high-priority issues:
 
             ${{ steps.find-high-priority.outputs.result }}
 
             ## Instructions
-            For each issue in the list above:
+            For each issue:
 
-            1. **Use the `/new-module` command** on each issue
-            2. **Process issues sequentially** - complete one fully before starting the next
-            3. **Mark each issue as attempted** by adding the `module-generation-attempted` label (unless dry run)
-            4. **Create separate branches** for each module (format: `add-{toolname}-module`)
-            5. **Generate comprehensive implementations** following all patterns in the `/new-module` command
-            6. **Create pull requests** linking back to the original issues (unless dry run)
+            1. Use the `/new-module` slash command
+            2. Process issues sequentially - complete one before starting the next
+            3. Mark attempts with `module-generation-attempted` label (unless dry run)
+            4. Create separate branches: `add-{toolname}-module`
+            5. Create pull requests linking to original issues (unless dry run)
 
-            ## Success Criteria
-            - All issues should have module generation attempted
-            - Each successful generation should result in a working pull request (unless dry run)
-            - Failed attempts should be documented with reasons why
-            - Issues should be labeled appropriately to track progress
-
-            ## Important Notes
-            - If dry run mode is enabled, analyze and create code but don't commit or create PRs
-            - Use the comprehensive `/new-module` command instructions in `.claude/commands/`
-            - Focus on creating high-quality, working modules that follow MultiQC patterns
-            - Include comprehensive tests and proper documentation
+            **Note**: If dry run mode is enabled, analyze and generate code but don't commit or create PRs.
 
           claude_args: |
             --max-turns 25
