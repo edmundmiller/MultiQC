@@ -1,10 +1,12 @@
 """Parse BibTeX (.bib) citations into the shared Citation model.
 
-BibTeX is an optional alternative input to CSL-JSON. It requires the
-`bibtexparser` package, which is not a core MultiQC dependency; install it with
-`pip install multiqc[citations]`. If a `.bib` file is found without
-`bibtexparser` installed, the file is skipped with a warning (CSL-JSON still
-works).
+BibTeX is an optional alternative input to CSL-JSON. A small reader handles the
+entry shape that pipelines emit (one `@type{key, field = {value}, ...}` block
+per tool). It is not a general-purpose BibTeX parser: it does not resolve
+`@string` macros or string concatenation, and skips `@comment`/`@preamble`/
+`@string` blocks. Keeping it self-contained means the citations module adds no
+dependency; tools that only have a DOI can reach the canonical CSL-JSON format
+via DOI content negotiation instead.
 
 BibTeX has no standard field for the tool name or the runtime version, so:
 
@@ -14,23 +16,90 @@ BibTeX has no standard field for the tool name or the runtime version, so:
 
 import logging
 import re
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .citation import Authors, Citation, clean_doi
 
 log = logging.getLogger(__name__)
 
 _AND_SPLIT = re.compile(r"\s+and\s+", flags=re.IGNORECASE)
+_ENTRY_START = re.compile(r"@(\w+)\s*\{")
+
+# BibTeX constructs that define macros or metadata rather than a citation entry.
+_NON_ENTRY_TYPES = {"comment", "preamble", "string"}
 
 
-def bibtexparser_available() -> bool:
-    """Whether the optional `bibtexparser` dependency can be imported."""
-    try:
-        import bibtexparser  # noqa: F401
+def _read_balanced(text: str, open_idx: int) -> Tuple[str, int]:
+    """`text[open_idx]` is `{`; return (inner text, index past the matching `}`)."""
+    depth = 0
+    for i in range(open_idx, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_idx + 1 : i], i + 1
+    raise ValueError("unbalanced braces")
 
-        return True
-    except ImportError:
-        return False
+
+def _split_top_level_commas(text: str) -> List[str]:
+    """Split on commas that sit outside any `{...}` group or `"..."` string."""
+    parts: List[str] = []
+    depth = 0
+    in_quote = False
+    start = 0
+    for i, c in enumerate(text):
+        if c == '"' and depth == 0:
+            in_quote = not in_quote
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+        elif c == "," and depth == 0 and not in_quote:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return parts
+
+
+def _strip_value_delimiters(raw: str) -> str:
+    """Drop the outer `{...}` or `"..."` around a field value, if present."""
+    if len(raw) >= 2 and raw[0] == "{" and raw[-1] == "}":
+        return raw[1:-1]
+    if len(raw) >= 2 and raw[0] == '"' and raw[-1] == '"':
+        return raw[1:-1]
+    return raw
+
+
+def _parse_entry(entrytype: str, body: str) -> Dict[str, str]:
+    """Turn an entry body (`key, name = value, ...`) into a field dict.
+
+    Field names are lowercased; `ENTRYTYPE` and `ID` mirror the keys the rest of
+    the module expects.
+    """
+    chunks = _split_top_level_commas(body)
+    entry: Dict[str, str] = {"ENTRYTYPE": entrytype, "ID": chunks[0].strip()}
+    for chunk in chunks[1:]:
+        name, sep, raw = chunk.partition("=")
+        if not sep:
+            continue
+        entry[name.strip().lower()] = _strip_value_delimiters(raw.strip())
+    return entry
+
+
+def _tokenize(content: str) -> List[Dict[str, str]]:
+    """Read BibTeX content into a list of entry field dicts."""
+    entries: List[Dict[str, str]] = []
+    pos = 0
+    for m in _ENTRY_START.finditer(content):
+        if m.start() < pos:
+            continue  # this `@...{` sits inside a value we already consumed
+        entrytype = m.group(1).lower()
+        body, pos = _read_balanced(content, m.end() - 1)
+        if entrytype in _NON_ENTRY_TYPES:
+            continue
+        entries.append(_parse_entry(entrytype, body))
+    return entries
 
 
 def _debrace(value: Optional[str]) -> Optional[str]:
@@ -72,7 +141,7 @@ def _normalize_bibtex_authors(field: Optional[str]) -> Authors:
     return Authors.from_names(names, has_etal)
 
 
-def _entry_to_citation(entry: dict) -> Citation:
+def _entry_to_citation(entry: Dict[str, str]) -> Citation:
     tool = _debrace(entry.get("tool")) or entry.get("ID")
     if not tool:
         raise ValueError(f"BibTeX entry is missing both a `tool` field and a citation key: {entry!r}")
@@ -100,24 +169,11 @@ def _entry_to_citation(entry: dict) -> Citation:
 def parse_bibtex(content: str, fn: str = "<citations>") -> List[Citation]:
     """Parse BibTeX file content into Citations.
 
-    Returns an empty list (with a warning) if `bibtexparser` is not installed.
     Raises ValueError with the file path on a parse failure.
     """
-    if not bibtexparser_available():
-        log.warning(
-            "Found BibTeX citations file '%s' but the 'bibtexparser' package is not installed; "
-            "skipping. Install it with: pip install multiqc[citations]",
-            fn,
-        )
-        return []
-
-    import bibtexparser
-    from bibtexparser.bparser import BibTexParser
-
     try:
-        parser = BibTexParser(common_strings=True, ignore_nonstandard_types=False)
-        database = bibtexparser.loads(content, parser=parser)
-    except Exception as exc:  # bibtexparser raises a variety of exception types
+        entries = _tokenize(content)
+    except ValueError as exc:
         raise ValueError(f"Could not parse BibTeX citations file '{fn}': {exc}") from exc
 
-    return [_entry_to_citation(entry) for entry in database.entries]
+    return [_entry_to_citation(entry) for entry in entries]

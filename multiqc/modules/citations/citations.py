@@ -28,10 +28,9 @@ class MultiqcModule(BaseMultiqcModule):
       [CSL-JSON](https://citeproc-js.readthedocs.io/en/latest/csl-json/) items.
       A `custom` object on each item carries the tool name and the version that
       actually ran (`{"custom": {"tool": "fastqc", "version": "0.12.1"}}`).
-    - **BibTeX** (`*.citations.bib`), an optional alternative that requires the
-      `bibtexparser` package (`pip install multiqc[citations]`). The tool name
-      comes from a `tool` field or the entry key; the version from a `version`
-      field.
+    - **BibTeX** (`*.citations.bib`), an optional alternative for the entry
+      shape pipelines emit. The tool name comes from a `tool` field or the
+      entry key; the version from a `version` field.
 
     Short citations use the Harvard short form ("Surname (year)", or
     "Surname et al. (year)" for several authors) and link to the DOI when

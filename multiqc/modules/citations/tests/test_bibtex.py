@@ -1,18 +1,12 @@
-"""Tests for BibTeX parsing in the citations module.
-
-Skipped when the optional `bibtexparser` dependency is not installed.
-"""
+"""Tests for BibTeX parsing in the citations module."""
 
 import pytest
 
 from multiqc.modules.citations.bibtex import (
     _split_bibtex_name,
-    bibtexparser_available,
     parse_bibtex,
 )
 from multiqc.modules.citations.citation import render_bibliography, render_inline
-
-pytestmark = pytest.mark.skipif(not bibtexparser_available(), reason="bibtexparser not installed")
 
 SAMPLE = """
 @software{fastqc,
