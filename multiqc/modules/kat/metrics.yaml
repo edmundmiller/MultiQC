@@ -1,0 +1,21 @@
+kat:
+  kmer_peaks:
+    label: "# of Kmer Peaks"
+    description: Number of peaks identified in the K-mer spectra
+    fmt: num0
+    scale: false
+  gc_peaks:
+    label: "# of GC Peaks"
+    description: Number of peaks identified in the GC distribution
+    fmt: num0
+    scale: false
+  est_genome_size:
+    label: Est. genome Size
+    description: Estimated Genome Size based on K-mer spectra
+    fmt: num0
+    scale: BuPu
+  mean_kmer_freq:
+    label: Mean K-mer Freq.
+    description: Mean K-mer Frequency, provides an estimate of sequencing coverage
+    fmt: mult0
+    scale: Greens

@@ -90,6 +90,7 @@ class MultiqcModule(BaseMultiqcModule):
                     "title": "Percolator: Median Feature Weights",
                     "sort_samples": False,
                     "hide_zero_cats": False,
+                    **self.metric_pconfig("feature_weights", "weight"),
                 },
             ),
         )

@@ -42,7 +42,7 @@ class MultiqcModule(BaseMultiqcModule):
         self.write_data_file(self.conpair_data, "multiqc_conpair")
 
         # Basic Stats Table
-        self.conpair_general_stats_table()
+        self.general_stats_addcols(self.conpair_data, self.metric_headers("conpair", general_stats=True))
 
     def parse_conpair_logs(self, f):
         """Go through log file looking for conpair concordance or contamination output
@@ -83,36 +83,3 @@ class MultiqcModule(BaseMultiqcModule):
                 self.conpair_data[f["s_name"]] = dict()
             self.add_data_source(f, section=_cp_type(parsed_data))
             self.conpair_data[f["s_name"]].update(parsed_data)
-
-    def conpair_general_stats_table(self):
-        """Take the parsed stats from the Conpair report and add it to the
-        basic stats table at the top of the report"""
-
-        headers = {}
-        headers["concordance_concordance"] = {
-            "title": "Concordance",
-            "max": 100,
-            "min": 0,
-            "suffix": "%",
-            "format": "{:,.2f}",
-            "scale": "RdYlGn",
-        }
-        headers["contamination_normal"] = {
-            "title": "N Contamination",
-            "description": "Normal sample contamination level",
-            "max": 100,
-            "min": 0,
-            "suffix": "%",
-            "format": "{:,.3f}",
-            "scale": "RdYlBu-rev",
-        }
-        headers["contamination_tumor"] = {
-            "title": "T Contamination",
-            "description": "Tumor sample contamination level",
-            "max": 100,
-            "min": 0,
-            "suffix": "%",
-            "format": "{:,.3f}",
-            "scale": "RdYlBu-rev",
-        }
-        self.general_stats_addcols(self.conpair_data, headers)

@@ -45,34 +45,6 @@ class MultiqcModule(BaseMultiqcModule):
         # Write parsed report data to a file
         self.write_data_file(self.kat_data, "multiqc_kat")
 
-        headers = {
-            "kmer_peaks": {
-                "title": "# of Kmer Peaks",
-                "description": "Number of peaks identified in the K-mer spectra",
-                "scale": False,
-                "format": "{:,.0f}",
-            },
-            "gc_peaks": {
-                "title": "# of GC Peaks",
-                "description": "Number of peaks identified in the GC distribution",
-                "scale": False,
-                "format": "{:,.0f}",
-            },
-            "est_genome_size": {
-                "title": "Est. genome Size",
-                "description": "Estimated Genome Size based on K-mer spectra",
-                "scale": "BuPu",
-                "format": "{:,.0f}",
-            },
-            "mean_kmer_freq": {
-                "title": "Mean K-mer Freq.",
-                "description": "Mean K-mer Frequency, provides an estimate of sequencing coverage",
-                "scale": "Greens",
-                "format": "{:,.0f}",
-                "suffix": "x",
-            },
-        }
-
         kat_config = {
             "namespace": "KAT",
             "id": "kat-table",
@@ -85,7 +57,7 @@ class MultiqcModule(BaseMultiqcModule):
             anchor="kat-first",
             description="Table showing k-mer coverage distributions and if available GC distributions",
             helptext="This table can give a quick idea of potential contaminants that can be identified via unexpected numbers of k-mer or gc peaks in the data",
-            plot=table.plot(self.kat_data, headers, kat_config),
+            plot=table.plot(self.kat_data, self.metric_headers("kat"), kat_config),
         )
 
     def parse_kat_report(self, content):

@@ -1,0 +1,5 @@
+feature_weights:
+  weight:
+    label: Median feature weight
+    description: Normalized feature weight, median across all input samples
+    fmt: num4

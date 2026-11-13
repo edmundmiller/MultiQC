@@ -1,0 +1,21 @@
+conpair:
+  concordance_concordance:
+    label: Concordance
+    fmt: pct2
+    range: [0, 100]
+    scale: RdYlGn
+    general_stats: true
+  contamination_normal:
+    label: N Contamination
+    description: Normal sample contamination level
+    fmt: pct3
+    range: [0, 100]
+    scale: RdYlBu-rev
+    general_stats: true
+  contamination_tumor:
+    label: T Contamination
+    description: Tumor sample contamination level
+    fmt: pct3
+    range: [0, 100]
+    scale: RdYlBu-rev
+    general_stats: true
