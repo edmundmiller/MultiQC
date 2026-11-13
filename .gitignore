@@ -62,3 +62,7 @@ node_modules/
 .claude/settings.local.json
 
 Pipfile
+
+# Amp orb runtime files
+.amp/portals/*
+.venv/

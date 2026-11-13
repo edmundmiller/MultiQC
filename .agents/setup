@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+SECONDS=0
+trap 'echo "Orb setup finished after ${SECONDS}s"' EXIT
+
+echo "[${SECONDS}s] Checking system packages"
+packages=(ca-certificates curl git xz-utils libnss3 libatk-bridge2.0-0 libcups2
+    libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2
+    libgbm1 libasound2 libpango-1.0-0 libcairo2)
+missing=()
+for package in "${packages[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+        missing+=("$package")
+    fi
+done
+if ((${#missing[@]})); then
+    sudo apt-get update
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}"
+fi
+
+echo "[${SECONDS}s] Installing Python and development dependencies"
+export PATH="$HOME/.local/bin:$PATH"
+if ! command -v uv >/dev/null 2>&1; then
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh
+fi
+uv python install 3.12
+uv venv --python 3.12 --seed --allow-existing .venv
+# The pinned Kaleido 0.2.1 needs Plotly's legacy image export support.
+uv pip install --python .venv/bin/python -e '.[dev]' 'plotly<6'
+export PATH="$repo_root/.venv/bin:$PATH"
+
+echo "[${SECONDS}s] Installing Node and report asset dependencies"
+# Vite 8 requires Node >=22.12 on the Node 22 release line.
+node_version=22.23.5
+case "$(uname -m)" in
+    x86_64) node_arch=x64 ;;
+    aarch64) node_arch=arm64 ;;
+    *) echo "Unsupported Node architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+node_dir="$HOME/.local/share/node-v$node_version-linux-$node_arch"
+if [[ ! -x "$node_dir/bin/node" ]]; then
+    archive="node-v$node_version-linux-$node_arch.tar.xz"
+    download_dir="$(mktemp -d)"
+    curl -fsSL "https://nodejs.org/dist/v$node_version/$archive" -o "$download_dir/$archive"
+    curl -fsSL "https://nodejs.org/dist/v$node_version/SHASUMS256.txt" -o "$download_dir/SHASUMS256.txt"
+    (cd "$download_dir" && grep " $archive$" SHASUMS256.txt | sha256sum --check)
+    mkdir -p "$(dirname "$node_dir")"
+    tar -xJf "$download_dir/$archive" -C "$(dirname "$node_dir")"
+    rm -rf "$download_dir"
+fi
+ln -sfn "$node_dir" "$HOME/.local/share/multiqc-node"
+export PATH="$HOME/.local/share/multiqc-node/bin:$PATH"
+npm ci --prefix multiqc/templates/default --no-audit --no-fund
+
+echo "[${SECONDS}s] Preparing test data and lint hooks"
+if [[ ! -d test-data ]]; then
+    git clone --depth 1 https://github.com/MultiQC/test-data.git test-data
+fi
+prek install-hooks
+
+echo "[${SECONDS}s] Persisting the development environment for login shells"
+profile_marker="# MultiQC orb development environment"
+touch "$HOME/.bash_profile"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile"; then
+    cat >> "$HOME/.bash_profile" <<EOF
+
+$profile_marker
+if [[ "\$PWD" == "$repo_root" || "\$PWD" == "$repo_root/"* ]]; then
+    export VIRTUAL_ENV="$repo_root/.venv"
+    export PATH="$repo_root/.venv/bin:\$HOME/.local/share/multiqc-node/bin:\$HOME/.local/bin:\$PATH"
+fi
+EOF
+fi
+
+echo "[${SECONDS}s] Checking the installed toolchain"
+python --version
+multiqc --version
+node --version
+pytest --version
