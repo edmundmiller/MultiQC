@@ -1256,7 +1256,16 @@ class BaseMultiqcModule:
             col: ColumnDict = {"title": metric.label, "hidden": metric.hidden}
             if metric.description is not None:
                 col["description"] = metric.description
-            if metric.fmt is not None:
+            if metric.fmt in metrics_catalog.COUNT_SHARED_KEYS:
+                shared_key = metrics_catalog.COUNT_SHARED_KEYS[metric.fmt]
+                col["shared_key"] = shared_key
+                # Same convention as hand-written count columns: "M Reads", "... (millions)"
+                prefix = getattr(config, f"{shared_key}_prefix")
+                if prefix:
+                    col["title"] = f"{prefix} {metric.label}"
+                    desc = getattr(config, f"{shared_key}_desc")
+                    col["description"] = f"{metric.description or metric.label} ({desc})"
+            elif metric.fmt is not None:
                 decimals, suffix = metrics_catalog.parse_format_code(metric.fmt)
                 col["format"] = f"{{:,.{decimals}f}}"
                 if suffix:
@@ -1275,7 +1284,9 @@ class BaseMultiqcModule:
         """
         metric = self._metrics_table(table)[column]
         pconfig: Dict[str, Any] = {"ylab": metric.label}
-        if metric.fmt is not None:
+        if metric.fmt in metrics_catalog.COUNT_SHARED_KEYS:
+            pconfig["tt_decimals"] = 0  # plots show raw counts, unscaled
+        elif metric.fmt is not None:
             decimals, suffix = metrics_catalog.parse_format_code(metric.fmt)
             pconfig["tt_decimals"] = decimals
             if suffix:

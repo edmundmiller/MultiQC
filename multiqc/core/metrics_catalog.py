@@ -26,12 +26,18 @@ from pydantic import BaseModel, ConfigDict, RootModel, field_validator
 FORMAT_CODE_RE = re.compile(r"^(num|pct|mult)([0-4])$")
 FORMAT_CODE_SUFFIX = {"num": "", "pct": "%", "mult": "x"}
 
+# Count codes map to the table's existing `shared_key` presets, which scale values by the
+# user's `*_count_multiplier` and add `*_count_prefix` as the suffix.
+COUNT_SHARED_KEYS = {"reads": "read_count", "long_reads": "long_read_count", "bases": "base_count"}
+
 
 def parse_format_code(fmt: str) -> Tuple[int, str]:
-    """Return (decimals, suffix) for a format code such as `pct2` or `num0`."""
+    """Return (decimals, suffix) for a numeric format code such as `pct2` or `num0`."""
     match = FORMAT_CODE_RE.match(fmt)
     if not match:
-        raise ValueError(f'"{fmt}" is not a format code (expected num0-4, pct0-4 or mult0-4)')
+        raise ValueError(
+            f'"{fmt}" is not a format code (expected num0-4, pct0-4, mult0-4, {", ".join(COUNT_SHARED_KEYS)})'
+        )
     kind, decimals = match.groups()
     return int(decimals), FORMAT_CODE_SUFFIX[kind]
 
@@ -50,7 +56,7 @@ class Metric(BaseModel):
     @field_validator("fmt")
     @classmethod
     def _check_fmt(cls, fmt: Optional[str]) -> Optional[str]:
-        if fmt is not None:
+        if fmt is not None and fmt not in COUNT_SHARED_KEYS:
             parse_format_code(fmt)
         return fmt
 

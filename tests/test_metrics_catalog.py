@@ -3,6 +3,8 @@ import sys
 
 import pytest
 
+from multiqc import config
+
 METRICS_YAML = """
 tbl:
   pct_dup:
@@ -59,10 +61,57 @@ def test_metric_headers(tmp_path):
     }
 
 
+COUNTS_YAML = """
+tbl:
+  total:
+    label: Reads
+    description: Total reads
+    fmt: reads
+  kept:
+    label: Bases kept
+    fmt: bases
+"""
+
+
+def test_count_codes_follow_user_config(tmp_path):
+    config.read_count_prefix, config.read_count_desc = "K", "thousands"
+    config.base_count_prefix, config.base_count_desc = "Gb", "billions"
+    module = _module_with_catalog(tmp_path, COUNTS_YAML)
+
+    assert module.metric_headers("tbl") == {
+        "total": {
+            "title": "K Reads",
+            "description": "Total reads (thousands)",
+            "hidden": False,
+            "shared_key": "read_count",
+        },
+        "kept": {
+            "title": "Gb Bases kept",
+            "description": "Bases kept (billions)",
+            "hidden": False,
+            "shared_key": "base_count",
+        },
+    }
+    assert module.metric_pconfig("tbl", "total") == {"ylab": "Reads", "tt_decimals": 0}
+
+
+def test_count_codes_without_prefix_keep_label(tmp_path):
+    config.read_count_prefix = ""
+    module = _module_with_catalog(tmp_path, COUNTS_YAML)
+
+    assert module.metric_headers("tbl")["total"] == {
+        "title": "Reads",
+        "description": "Total reads",
+        "hidden": False,
+        "shared_key": "read_count",
+    }
+
+
 @pytest.mark.parametrize(
     "metrics_yaml, error",
     [
         ("tbl:\n  a:\n    label: A\n    fmt: pct9\n", "is not a format code"),
+        ("tbl:\n  a:\n    label: A\n    fmt: read\n", "is not a format code"),
         ("tbl:\n  a:\n    label: A\n    colour: red\n", "colour"),
         ("tbl:\n  a:\n    fmt: num0\n", "label"),
     ],

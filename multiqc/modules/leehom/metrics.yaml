@@ -1,0 +1,13 @@
+leehom:
+  merged_trimming:
+    label: Merged (Trimming)
+    description: Merged clusters from trimming
+    fmt: reads
+    scale: PuRd
+    general_stats: true
+  merged_overlap:
+    label: Merged (Overlap)
+    description: Merged clusters from overlapping reads
+    fmt: reads
+    scale: PuRd
+    general_stats: true

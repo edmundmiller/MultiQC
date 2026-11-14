@@ -1,7 +1,6 @@
 import logging
 import re
 
-from multiqc import config
 from multiqc.base_module import BaseMultiqcModule, ModuleNoSamplesFound
 
 log = logging.getLogger(__name__)
@@ -48,7 +47,7 @@ class MultiqcModule(BaseMultiqcModule):
         self.write_data_file(self.leehom_data, "multiqc_leehom")
 
         # Basic Stats Table
-        self.leehom_general_stats_table()
+        self.general_stats_addcols(self.leehom_data, self.metric_headers("leehom", general_stats=True))
 
     def parse_leehom_logs(self, f):
         """Go through log file looking for leehom output"""
@@ -69,26 +68,3 @@ class MultiqcModule(BaseMultiqcModule):
                 if match:
                     parsed_data[k] = int(match.group(1))
         return parsed_data
-
-    def leehom_general_stats_table(self):
-        """Take the parsed stats from the leeHom report and add it to the
-        basic stats table at the top of the report"""
-
-        headers = {}
-        headers["merged_trimming"] = {
-            "title": f"{config.read_count_prefix} Merged (Trimming)",
-            "description": f"Merged clusters from trimming ({config.read_count_desc})",
-            "min": 0,
-            "scale": "PuRd",
-            "modify": lambda x: x * config.read_count_multiplier,
-            "shared_key": "read_count",
-        }
-        headers["merged_overlap"] = {
-            "title": f"{config.read_count_prefix} Merged (Overlap)",
-            "description": f"Merged clusters from overlapping reads ({config.read_count_desc})",
-            "min": 0,
-            "scale": "PuRd",
-            "modify": lambda x: x * config.read_count_multiplier,
-            "shared_key": "read_count",
-        }
-        self.general_stats_addcols(self.leehom_data, headers)
