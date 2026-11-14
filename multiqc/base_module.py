@@ -4,7 +4,6 @@ MultiQC modules base class, contains helper functions
 
 import dataclasses
 import fnmatch
-import inspect
 import io
 import itertools
 import json
@@ -1250,7 +1249,7 @@ class BaseMultiqcModule:
         marked `general_stats: true`.
         """
         headers: Dict[ColumnKey, ColumnDict] = {}
-        for col_id, metric in self._metrics_table(table).items():
+        for col_id, metric in self._metrics_table(table, "columns").items():
             if general_stats and not metric.general_stats:
                 continue
             col: ColumnDict = {"title": metric.label, "hidden": metric.hidden}
@@ -1282,7 +1281,7 @@ class BaseMultiqcModule:
         Value-axis settings (label, tooltip decimals and suffix, range) for a plot of one
         metric from this module's metrics.yaml. Merge into the plot's pconfig.
         """
-        metric = self._metrics_table(table)[column]
+        metric = self._metrics_table(table, "axis")[column]
         pconfig: Dict[str, Any] = {"ylab": metric.label}
         if metric.fmt in metrics_catalog.COUNT_SHARED_KEYS:
             pconfig["tt_decimals"] = 0  # plots show raw counts, unscaled
@@ -1295,11 +1294,12 @@ class BaseMultiqcModule:
             pconfig["ymin"], pconfig["ymax"] = metric.range
         return pconfig
 
-    def _metrics_table(self, table: str) -> Dict[str, metrics_catalog.Metric]:
-        path = Path(inspect.getfile(type(self))).with_name("metrics.yaml")
+    def _metrics_table(self, table: str, use: Literal["columns", "axis"]) -> Dict[str, metrics_catalog.Metric]:
+        path = metrics_catalog.path_for(type(self))
         catalog = metrics_catalog.load(path)
         if table not in catalog.root:
             raise KeyError(f'Table "{table}" is not defined in {path} (tables: {", ".join(catalog.root)})')
+        metrics_catalog.tables_used.add((path, table, use))
         return catalog.root[table]
 
     def add_data_source(
